@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>最終課題1664291</title>
+    <script src="matter.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+</head>
+
+<body>
+    <script>
+        $(function () {
+            $("#btn").click(function () {
+                $("#make_stage").fadeOut();
+                $("#start").fadeIn();
+            });
+        });
+    </script>
+    <div class="wrapper">
+        <div id="container"></div>
+        <form id="make_stage">
+            いくつ邪魔者が欲しいですか？
+            <br>
+            <input type="text" name="num" id="num">
+            <input type="button" onclick="pre()" id="btn" value="ステージ作成">
+        </form>
+        <button id="start" onclick="start()">スタート</button>
+        <br> 操作方法：キーボードのカーソルキーで移動
+        <br> ルール：邪魔者に当たらず右下のゴールに行けるように
+    </div>
+    <script>
+        var Engine = Matter.Engine,
+            Render = Matter.Render,
+            Runner = Matter.Runner,
+            World = Matter.World,
+            Events = Matter.Events,
+            MouseConstraint = Matter.MouseConstraint,
+            Mouse = Matter.Mouse,
+            Bodies = Matter.Bodies;
+
+
+        // create engine
+        var container = document.getElementById('container'); //どこに表記するか
+        var engine = Engine.create(container, { //物理演算エンジンを生成
+            render: { //setting of render
+                options: {
+                    width: 800,  //ステージの横幅
+                    height: 350,  //ステージの高さ
+                    background: 'gray',  //ステージの背景色
+                    wireframes: false //ワイヤーフレームモードをON
+                }
+            }
+        });
+
+        //円のオブジェクト作成(自分)
+        var circle = Bodies.circle(20, 300, 10, {
+            label: 'you', //label指定
+            frictionAir: 0.05, //空気抵抗
+        });
+        //床
+        var sheet = Bodies.rectangle(400, 350, 800, 30, {
+            isStatic: true
+        });
+
+        // 壁
+        var wall1 = Bodies.rectangle(0, 0, 10, 700, {
+            isStatic: true
+        });
+        var wall2 = Bodies.rectangle(795, 0, 10, 700, {
+            isStatic: true
+        });
+
+        // ゴールの設定
+        var goal = Bodies.rectangle(750, 320, 30, 30, {
+            isStatic: true,
+            label: 'goal',
+            render: {
+                fillStyle: 'red',
+                strokeStyle: 'blue',
+                lineWidth: 3
+            }
+        })
+
+        World.add(engine.world, [  //作成した図形をステージに追加して描画する
+            circle,
+            sheet,
+            wall1, wall2,
+            goal
+        ]);
+
+        function pre() {
+            var num = document.getElementById("num").value; //formからの値の読み取り
+            console.log(num);
+
+            for (var i = 0; i < num; i++) {
+                var x = Math.random() * 650 + 40;
+                var y = Math.random() * 350;
+                var length = Math.random() * 50;
+
+                // 障害物の作成
+                var stick = Bodies.rectangle(x, y, 10, length, {
+                    label: 'noise',
+                    isStatic: true
+                });
+
+                World.add(engine.world, [stick]);
+            }
+            // add mouse control
+            mouseConstraint = MouseConstraint.create(engine, {
+                constraint: {
+                    stiffness: 0.2,
+                    render: {
+                        visible: true
+                    }
+                }
+            });
+            World.add(engine.world, mouseConstraint);
+
+            // setting of collision
+            Events.on(engine, 'collisionEnd', function (event) {
+                pairs = event.pairs;
+                for (i = 0; i < pairs.length; i++) {
+                    var pair = pairs[i];
+                    if (pair.bodyA.label == 'you' && pair.bodyB.label == 'noise' || pair.bodyA.label == 'noise' && pair.bodyB.label == 'you') {
+                        alert('当たりました');
+                        location.reload();
+                    }
+                }
+            })
+            // ゴール判定
+            Events.on(engine, 'collisionStart', function (event) {
+                pairs = event.pairs;
+                for (i = 0; i < pairs.length; i++) {
+                    var pair = pairs[i];
+                    if (pair.bodyA.label == 'you' && pair.bodyB.label == 'goal' || pair.bodyA.label == 'goal' && pair.bodyB.label == 'you') {
+                        alert('ゴールですおめでとうございます');
+                        location.reload();
+                    }
+                }
+            })
+
+            // キーボード入力
+            var RIGHT = 0;
+            var LEFT = 0;
+            var UP = 0;
+            document.onkeydown = function (event) {
+                if (event.keyCode == 39) { RIGHT = 1 };
+                if (event.keyCode == 38) { UP = 1 };
+                if (event.keyCode == 37) { LEFT = 1 };
+            };
+            document.onkeyup = function (event) {
+                if (event.keyCode == 39) { RIGHT = 0 };
+                if (event.keyCode == 38) { UP = 0 };
+                if (event.keyCode == 37) { LEFT = 0 };
+            };
+
+            //フレーム毎実行
+            Matter.Events.on(engine, 'beforeUpdate', function () {
+                if (RIGHT == 1) { Matter.Body.setVelocity(circle, { x: Math.PI / 2, y: 0 }) };
+                if (LEFT == 1) { Matter.Body.setVelocity(circle, { x: -1 * Math.PI / 2, y: 0 }) };
+                if (UP == 1) { Matter.Body.setVelocity(circle, { x: 0, y: -1 * Math.PI }) }; //下が正方向
+            });
+        }
+
+        // create runner
+        function start() {
+            var runner = Runner.create();
+            Runner.run(runner, engine);  //物理エンジンを実行
+        }
+    </script>
+
+</body>
+
+</html>
